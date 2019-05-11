@@ -52,7 +52,7 @@ func (h *handler) createFindToken(user, pass string) (*token, error) {
 		return nil, err
 	}
 	for _, token := range tokens {
-		if token.Name == h.label {
+		if token.Name == h.label && token.Sha1 != "" {
 			return token, nil
 		}
 	}
