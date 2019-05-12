@@ -15,6 +15,7 @@ import (
 )
 
 type token struct {
+	Id int `json:"id,omitempty"`
 	Name string `json:"name"`
 	Sha1 string `json:"sha1,omitempty"`
 }
@@ -53,7 +54,12 @@ func (h *handler) createFindToken(user, pass string) (*token, error) {
 	}
 	for _, token := range tokens {
 		if token.Name == h.label {
-			return token, nil
+			if token.Sha1 != "" {
+				return token, nil
+			} else {
+				// token is unusable, delete it so we can create another
+				h.deleteToken(user, pass, token.Id)
+			}
 		}
 	}
 	return h.createToken(user, pass)
@@ -113,4 +119,27 @@ func (h *handler) findTokens(user, pass string) ([]*token, error) {
 	out := []*token{}
 	err = json.NewDecoder(res.Body).Decode(&out)
 	return out, err
+}
+
+func (h *handler) deleteToken(user, pass string, id int) (error) {
+	path := fmt.Sprintf("%s/api/v1/users/%s/tokens/%d", h.server, user, id)
+
+	req, err := http.NewRequest("DELETE", path, nil)
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.SetBasicAuth(user, pass)
+
+	res, err := h.client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer res.Body.Close()
+	if res.StatusCode > 299 {
+		return errors.New(
+			http.StatusText(res.StatusCode),
+		)
+	}
+	return nil
 }
